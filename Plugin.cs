@@ -160,6 +160,7 @@ namespace RadsiStuff
         {
             GameObject validZone = GameObject.CreatePrimitive(PrimitiveType.Cube);
             GameObject.Destroy(validZone.GetComponent<BoxCollider>());
+            GameObject.Destroy(validZone.GetComponent<MeshRenderer>());
             validZone.transform.localScale = new Vector3(3f, 3f, 3f);
             validZone.transform.position = new Vector3(-44.7873f, 0.6012f, 96.6236f);
             validZone.AddComponent<BabyValidZone>();
