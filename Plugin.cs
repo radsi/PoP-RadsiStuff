@@ -1,8 +1,6 @@
-﻿using BepInEx;
+using BepInEx;
 using HarmonyLib;
-using System.Collections;
 using UnityEngine;
-using BepInEx.Logging;
 using UnityEngine.SceneManagement;
 
 namespace RadsiStuff
@@ -10,64 +8,118 @@ namespace RadsiStuff
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     public class Plugin : BaseUnityPlugin
     {
-        public GameObject player;
+        private GameObject player;
+        private Harmony harmony;
 
         private void Awake()
         {
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
-            new Harmony(PluginInfo.PLUGIN_GUID).PatchAll();
+            harmony = new Harmony(PluginInfo.PLUGIN_GUID);
+            harmony.PatchAll();
+        }
 
-            PatchTurtleRide.endingImageTexture = new Texture2D(2, 2);
-            PatchTurtleRide.endingImageTexture.LoadImage(Resource1.TurtleEndingImage);
+        private void Update()
+        {
+            if (player == null)
+            {
+                player = GameObject.Find("FPSController");
+            }
+            else if (player.GetComponent<BabyInjectedScript>() == null)
+            {
+                player.AddComponent<BabyInjectedScript>();
+            }
         }
     }
 
+    public class BabyInjectedScript : MonoBehaviour { }
+
     public class Billboard : MonoBehaviour
     {
-        private float currentTime = 0f;
-        private Transform _camera;
-        private FadeController _splashController;
+        private const float fadeInTime = 12f;
+        private const float fadeOutTime = 15f;
 
-        void Start()
+        private Transform cameraTransform;
+        private FadeController splashController;
+        private float timer;
+
+        private void Start()
         {
-            _splashController = GameObject.Find("Fade").GetComponent<FadeController>();
-            _camera = Camera.main.transform;
-            transform.localScale = new Vector3(3.1f, 1.8f, 1);
+            splashController = GameObject.Find("Fade").GetComponent<FadeController>();
+            cameraTransform = Camera.main.transform;
+            transform.localScale = new Vector3(3.1f, 1.8f, 1f);
             gameObject.layer = LayerMask.NameToLayer("Player");
         }
 
-        void Update()
+        private void Update()
         {
-            currentTime += Time.deltaTime;
+            timer += Time.deltaTime;
 
-            if (currentTime >= 12f && currentTime <= 13f)
+            if (timer >= fadeInTime && timer <= fadeInTime + 1f)
             {
-                _splashController.FadeIn();
+                splashController.FadeIn();
             }
 
-            if (currentTime >= 13f && currentTime <= 14f)
+            if (timer >= fadeInTime + 1f && timer <= fadeInTime + 2f)
             {
-                Camera.main.transform.SetParent(null);
+                cameraTransform.SetParent(null);
             }
 
-            if (currentTime >= 13.5f && currentTime <= 15f)
+            if (timer >= fadeInTime + 1.5f && timer <= fadeOutTime)
             {
                 transform.GetChild(0).gameObject.SetActive(true);
                 GameObject.Find("Directional Light").SetActive(false);
                 Camera.main.cullingMask = 1 << LayerMask.NameToLayer("Player");
-                _splashController.FadeOut();
+                splashController.FadeOut();
             }
 
-            if (currentTime >= 20f)
+            if (timer >= fadeOutTime + 5f)
             {
                 SceneManager.LoadScene(0);
             }
         }
 
-        void LateUpdate()
+        private void LateUpdate()
         {
-            transform.LookAt(transform.position + _camera.rotation * Vector3.forward, _camera.rotation * Vector3.down);
-            transform.position = _camera.position + _camera.forward * 2;
+            transform.LookAt(transform.position + cameraTransform.rotation * Vector3.forward, cameraTransform.rotation * Vector3.down);
+            transform.position = cameraTransform.position + cameraTransform.forward * 2f;
+        }
+    }
+
+    public class BabyValidZone : MonoBehaviour
+    {
+        private const float spawnTime = 15.7f;
+        private const float destroyTime = 17f;
+
+        private float timer;
+        private GameObject baby;
+        private GameObject originalBaby;
+
+        private void Start()
+        {
+            originalBaby = GameObject.Find("Village1/Villagers/BabyScene/NewVillagers/Mom/DefinitiveRiggedVillager_Woman/root/ctrl.torso/hip/spine.001/Baby/");
+            baby = Instantiate(originalBaby, Vector3.zero, Quaternion.identity);
+            baby.SetActive(false);
+            baby.transform.SetParent(GameObject.Find("FPSController").transform);
+        }
+
+        private void Update()
+        {
+            timer += Time.deltaTime;
+
+            if (timer >= spawnTime && timer <= destroyTime - 0.7f)
+            {
+                originalBaby.SetActive(false);
+                baby.SetActive(true);
+                baby.name = "Baby (mod)";
+                baby.transform.localPosition = new Vector3(0.0618f, -0.2254f, -1.2563f);
+                baby.transform.rotation = Quaternion.Euler(343.3828f, 141.8492f, 350.3807f);
+                baby.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+            }
+
+            if(timer >= 17)
+            {
+                Destroy(gameObject);
+            }
         }
     }
 
@@ -85,6 +137,9 @@ namespace RadsiStuff
             {
                 Camera.main.transform.SetParent(turtle);
 
+                endingImageTexture = new Texture2D(2, 2);
+                endingImageTexture.LoadImage(Resource1.TurtleEndingImage);
+
                 Material material = new Material(Shader.Find("Standard"));
                 material.mainTexture = endingImageTexture;
                 GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -95,6 +150,19 @@ namespace RadsiStuff
                 cube.GetComponent<Renderer>().material = material;
                 cubeParent.AddComponent<Billboard>();
             }
+        }
+    }
+
+    [HarmonyPatch(typeof(BabyThrow_Baby), "Trigger")]
+    public static class PatchBabyInteraction
+    {
+        public static void Postfix(BabyThrow_Baby __instance)
+        {
+            GameObject validZone = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            GameObject.Destroy(validZone.GetComponent<BoxCollider>());
+            validZone.transform.localScale = new Vector3(3f, 3f, 3f);
+            validZone.transform.position = new Vector3(-44.7873f, 0.6012f, 96.6236f);
+            validZone.AddComponent<BabyValidZone>();
         }
     }
 }
