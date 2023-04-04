@@ -1,122 +1,122 @@
 using BepInEx;
 using HarmonyLib;
+using System.Collections;
 using UnityEngine;
+using BepInEx.Logging;
 using UnityEngine.SceneManagement;
+using System.Linq;
+using System;
+using System.IO;
 
 namespace RadsiStuff
 {
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     public class Plugin : BaseUnityPlugin
     {
-        private GameObject player;
-        private Harmony harmony;
+        public GameObject Player;
 
         private void Awake()
         {
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
-            harmony = new Harmony(PluginInfo.PLUGIN_GUID);
-            harmony.PatchAll();
+            new Harmony(PluginInfo.PLUGIN_GUID).PatchAll();
         }
 
-        private void Update()
+        void Update()
         {
-            if (player == null)
+            if (Player == null)
             {
-                player = GameObject.Find("FPSController");
+                Player = GameObject.Find("FPSController");
             }
-            else if (player.GetComponent<BabyInjectedScript>() == null)
+            else if (Player != null && !Player.GetComponent<BabyInjectedScript>())
             {
-                player.AddComponent<BabyInjectedScript>();
+                Player.AddComponent<BabyInjectedScript>();
             }
         }
     }
 
-    public class BabyInjectedScript : MonoBehaviour { }
+    public class BabyInjectedScript : MonoBehaviour
+    {
+
+    }
 
     public class Billboard : MonoBehaviour
     {
-        private const float fadeInTime = 12f;
-        private const float fadeOutTime = 15f;
+        private float timer = 0f;
+        private Transform _camera;
+        private FadeController _splashController;
 
-        private Transform cameraTransform;
-        private FadeController splashController;
-        private float timer;
-
-        private void Start()
+        void Start()
         {
-            splashController = GameObject.Find("Fade").GetComponent<FadeController>();
-            cameraTransform = Camera.main.transform;
-            transform.localScale = new Vector3(3.1f, 1.8f, 1f);
+            _splashController = GameObject.Find("Fade").GetComponent<FadeController>();
+            _camera = Camera.main.transform;
+            transform.localScale = new Vector3(3.1f, 1.8f, 1);
             gameObject.layer = LayerMask.NameToLayer("Player");
         }
 
-        private void Update()
+        void Update()
         {
-            timer += Time.deltaTime;
+            if (Time.time != 0) { timer += Time.deltaTime; }
 
-            if (timer >= fadeInTime && timer <= fadeInTime + 1f)
+            if (timer >= 12f && timer <= 13f)
             {
-                splashController.FadeIn();
+                _splashController.FadeIn();
             }
 
-            if (timer >= fadeInTime + 1f && timer <= fadeInTime + 2f)
+            if (timer >= 13f && timer <= 14f)
             {
-                cameraTransform.SetParent(null);
+                Camera.main.transform.SetParent(null);
             }
 
-            if (timer >= fadeInTime + 1.5f && timer <= fadeOutTime)
+            if (timer >= 13.5f && timer <= 15f)
             {
                 transform.GetChild(0).gameObject.SetActive(true);
                 GameObject.Find("Directional Light").SetActive(false);
                 Camera.main.cullingMask = 1 << LayerMask.NameToLayer("Player");
-                splashController.FadeOut();
+                _splashController.FadeOut();
             }
 
-            if (timer >= fadeOutTime + 5f)
+            if (timer >= 20f)
             {
                 SceneManager.LoadScene(0);
             }
         }
 
-        private void LateUpdate()
+        void LateUpdate()
         {
-            transform.LookAt(transform.position + cameraTransform.rotation * Vector3.forward, cameraTransform.rotation * Vector3.down);
-            transform.position = cameraTransform.position + cameraTransform.forward * 2f;
+            transform.LookAt(transform.position + _camera.rotation * Vector3.forward, _camera.rotation * Vector3.down);
+            transform.position = _camera.position + _camera.forward * 2;
         }
     }
 
     public class BabyValidZone : MonoBehaviour
     {
-        private const float spawnTime = 15.7f;
-        private const float destroyTime = 17f;
+        private float timer = 0f;
+        private GameObject Baby;
+        private GameObject originalBaby = GameObject.Find("Village1/Villagers/BabyScene/NewVillagers/Mom/DefinitiveRiggedVillager_Woman/root/ctrl.torso/hip/spine.001/Baby/");
 
-        private float timer;
-        private GameObject baby;
-        private GameObject originalBaby;
-
-        private void Start()
+        void Start()
         {
-            originalBaby = GameObject.Find("Village1/Villagers/BabyScene/NewVillagers/Mom/DefinitiveRiggedVillager_Woman/root/ctrl.torso/hip/spine.001/Baby/");
-            baby = Instantiate(originalBaby, Vector3.zero, Quaternion.identity);
-            baby.SetActive(false);
-            baby.transform.SetParent(GameObject.Find("FPSController").transform);
+            Baby = Instantiate(originalBaby);
+            Baby.SetActive(false);
+            Baby.transform.SetParent(GameObject.Find("FPSController").transform);
+
         }
 
-        private void Update()
+        void Update()
         {
-            timer += Time.deltaTime;
+            if (Time.time != 0) { timer += Time.deltaTime; }
 
-            if (timer >= spawnTime && timer <= destroyTime - 0.7f)
+            if (timer >= 15.7f)
             {
-                originalBaby.SetActive(false);
-                baby.SetActive(true);
-                baby.name = "Baby (mod)";
-                baby.transform.localPosition = new Vector3(0.0618f, -0.2254f, -1.2563f);
-                baby.transform.rotation = Quaternion.Euler(343.3828f, 141.8492f, 350.3807f);
-                baby.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+                Destroy(originalBaby);
+                Baby.SetActive(true);
+                Baby.name = "Baby (mod)";
+                Baby.transform.localPosition = new Vector3(0.0618f, -0.2254f, -1.2563f);
+                Baby.transform.rotation = Quaternion.Euler(343.3828f, 141.8492f, 350.3807f);
+                Baby.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
             }
 
-            if(timer >= 17)
+            if (timer >= 17)
             {
                 Destroy(gameObject);
             }
