@@ -20,23 +20,6 @@ namespace RadsiStuff
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
             new Harmony(PluginInfo.PLUGIN_GUID).PatchAll();
         }
-
-        void Update()
-        {
-            if (Player == null)
-            {
-                Player = GameObject.Find("FPSController");
-            }
-            else if (Player != null && !Player.GetComponent<BabyInjectedScript>())
-            {
-                Player.AddComponent<BabyInjectedScript>();
-            }
-        }
-    }
-
-    public class BabyInjectedScript : MonoBehaviour
-    {
-
     }
 
     public class Billboard : MonoBehaviour
