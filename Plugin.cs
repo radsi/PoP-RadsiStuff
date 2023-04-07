@@ -1,24 +1,85 @@
 using BepInEx;
 using HarmonyLib;
-using System.Collections;
 using UnityEngine;
-using BepInEx.Logging;
 using UnityEngine.SceneManagement;
-using System.Linq;
-using System;
-using System.IO;
 
 namespace RadsiStuff
 {
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     public class Plugin : BaseUnityPlugin
     {
-        public GameObject Player;
+        public bool loaded = false;
+
+        public static GameObject Player;
+        GameObject gun;
+
+        static public AssetBundle gunBundle = AssetBundle.LoadFromMemory(Resource1.gun);
 
         private void Awake()
         {
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
             new Harmony(PluginInfo.PLUGIN_GUID).PatchAll();
+        }
+
+        private void Update()
+        {
+            if (Player == null)
+            {
+                Player = GameObject.Find("FPSController");
+            }
+            else if (Player != null)
+            {
+                if(gun == null)
+                {
+                    gun = Instantiate(gunBundle.LoadAsset<GameObject>("Beretta M9 Sketchfab"));
+                    gun.AddComponent<GunScript>();
+                    gun.SetActive(false);
+                }
+                else
+                {
+                    if (Input.GetKeyDown(KeyCode.F1))
+                    {
+                        gun.SetActive(!gun.activeSelf);
+                    }
+                }
+            }
+        }
+    }
+
+    public class GunScript : MonoBehaviour
+    {
+        ParticleSystem particleSystem;
+        GameObject crosshair;
+
+        private void Start()
+        {
+            transform.SetParent(Plugin.Player.transform);
+            transform.localPosition = new Vector3(-0.2836f, 0.5345f, 0.271f);
+            transform.localEulerAngles = new Vector3(1f, 270f, 3f);
+            particleSystem = GetComponentInChildren<ParticleSystem>();
+            crosshair = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Destroy(crosshair.GetComponent<BoxCollider>());
+            crosshair.transform.localScale = new Vector3(0.001f, 0.001f, 0.001f);
+        }
+
+        private void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.Mouse0))
+            {
+                particleSystem.Play();
+
+                RaycastHit hit;
+                if (Physics.Raycast(Camera.main.transform.position, Camera.main.transform.forward, out hit, 20f) && hit.transform.parent.CompareTag("Villager"))
+                {
+                    Destroy(hit.transform.parent.gameObject);
+                }
+            }
+        }
+
+        void LateUpdate()
+        {
+            crosshair.transform.LookAt(transform.position + Camera.main.transform.rotation * Vector3.forward, Camera.main.transform.rotation * Vector3.down);
+            crosshair.transform.position = Camera.main.transform.position + Camera.main.transform.forward * 0.2f;
         }
     }
 
